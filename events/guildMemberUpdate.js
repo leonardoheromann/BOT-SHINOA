@@ -1,3 +1,5 @@
+const { EmbedBuilder } = require('discord.js');
+
 module.exports = (client) => {
   client.on('guildMemberUpdate', async (oldMember, newMember) => {
     try {
@@ -12,22 +14,49 @@ module.exports = (client) => {
         role => !newMember.roles.cache.has(role.id)
       );
 
-      // cargos adicionados
-      addedRoles.forEach(role => {
-        logChannel.send(
-`👑 Cargo ADICIONADO: ${role.name}
-👤 ${newMember.user.tag}
-📌 ${role.name}`
-        );
+      // 🔎 audit log (quem fez a ação)
+      const auditLogs = await newMember.guild.fetchAuditLogs({
+        type: 25 // MEMBER_ROLE_UPDATE
       });
 
-      // cargos removidos
+      const entry = auditLogs.entries.first();
+      const executor = entry ? entry.executor : null;
+
+      const adminTag = executor ? executor.tag : 'Desconhecido';
+      const time = new Date().toLocaleString('pt-BR');
+
+      // 💚 CARGO ADICIONADO
+      addedRoles.forEach(role => {
+        const embed = new EmbedBuilder()
+          .setColor(0x00ff00)
+          .setTitle('💚 Cargo ADICIONADO')
+          .setThumbnail(newMember.user.displayAvatarURL({ dynamic: true }))
+          .addFields(
+            { name: '👤 Usuário', value: `${newMember.user.tag}`, inline: false },
+            { name: '🎭 Cargo', value: `${role.name}`, inline: false },
+            { name: '🛠️ Admin', value: adminTag, inline: false },
+            { name: '📋 Horário', value: time, inline: false }
+          )
+          .setTimestamp();
+
+        logChannel.send({ embeds: [embed] });
+      });
+
+      // ❌ CARGO REMOVIDO
       removedRoles.forEach(role => {
-        logChannel.send(
-`❌ Cargo REMOVIDO: ${role.name}
-👤 ${newMember.user.tag}
-📌 ${role.name}`
-        );
+        const embed = new EmbedBuilder()
+          .setColor(0xff0000)
+          .setTitle('❌ Cargo REMOVIDO')
+          .setThumbnail(newMember.user.displayAvatarURL({ dynamic: true }))
+          .addFields(
+            { name: '👤 Usuário', value: `${newMember.user.tag}`, inline: false },
+            { name: '🎭 Cargo', value: `${role.name}`, inline: false },
+            { name: '🛠️ Admin', value: adminTag, inline: false },
+            { name: '📋 Horário', value: time, inline: false }
+          )
+          .setTimestamp();
+
+        logChannel.send({ embeds: [embed] });
       });
 
     } catch (err) {
