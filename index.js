@@ -20,4 +20,4 @@ client.on('messageCreate', message => {
   }
 });
 
-client.login(process.env.TOKEN);
+client.login(TOKEN=SEU_TOKEN_DO_DISCORD);
