@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 
 module.exports = (client) => {
   client.on('guildMemberUpdate', async (oldMember, newMember) => {
@@ -14,50 +14,51 @@ module.exports = (client) => {
         role => !newMember.roles.cache.has(role.id)
       );
 
-      // 🔎 audit log (quem fez a ação)
+      // 🔥 pega audit log correto
       const auditLogs = await newMember.guild.fetchAuditLogs({
-        type: 25 // MEMBER_ROLE_UPDATE
+        type: AuditLogEvent.MemberRoleUpdate,
+        limit: 1
       });
 
       const entry = auditLogs.entries.first();
-      const executor = entry ? entry.executor : null;
+      const executor = entry?.executor;
 
       const adminTag = executor ? executor.tag : 'Desconhecido';
       const time = new Date().toLocaleString('pt-BR');
 
-      // 💚 CARGO ADICIONADO
-      addedRoles.forEach(role => {
+      // 💚 CARGOS ADICIONADOS
+      for (const role of addedRoles.values()) {
         const embed = new EmbedBuilder()
           .setColor(0x00ff00)
           .setTitle('💚 Cargo ADICIONADO')
-          .setThumbnail(newMember.user.displayAvatarURL({ dynamic: true }))
+          .setThumbnail(newMember.user.displayAvatarURL())
           .addFields(
-            { name: '👤 Usuário', value: `${newMember.user.tag}`, inline: false },
-            { name: '🎭 Cargo', value: `${role.name}`, inline: false },
-            { name: '🛠️ Admin', value: adminTag, inline: false },
-            { name: '📋 Horário', value: time, inline: false }
+            { name: '👤 Usuário', value: newMember.user.tag },
+            { name: '🎭 Cargo', value: role.name },
+            { name: '🛠️ Responsável', value: adminTag },
+            { name: '📅 Horário', value: time }
           )
           .setTimestamp();
 
-        logChannel.send({ embeds: [embed] });
-      });
+        await logChannel.send({ embeds: [embed] });
+      }
 
-      // ❌ CARGO REMOVIDO
-      removedRoles.forEach(role => {
+      // ❌ CARGOS REMOVIDOS
+      for (const role of removedRoles.values()) {
         const embed = new EmbedBuilder()
           .setColor(0xff0000)
           .setTitle('❌ Cargo REMOVIDO')
-          .setThumbnail(newMember.user.displayAvatarURL({ dynamic: true }))
+          .setThumbnail(newMember.user.displayAvatarURL())
           .addFields(
-            { name: '👤 Usuário', value: `${newMember.user.tag}`, inline: false },
-            { name: '🎭 Cargo', value: `${role.name}`, inline: false },
-            { name: '🛠️ Admin', value: adminTag, inline: false },
-            { name: '📋 Horário', value: time, inline: false }
+            { name: '👤 Usuário', value: newMember.user.tag },
+            { name: '🎭 Cargo', value: role.name },
+            { name: '🛠️ Responsável', value: adminTag },
+            { name: '📅 Horário', value: time }
           )
           .setTimestamp();
 
-        logChannel.send({ embeds: [embed] });
-      });
+        await logChannel.send({ embeds: [embed] });
+      }
 
     } catch (err) {
       console.log('Erro no guildMemberUpdate:', err);
