@@ -4,9 +4,13 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers // 🔥 necessário pro autorole
   ]
 });
+
+// 🔥 carregar evento de autorole
+require('./events/guildMemberAdd')(client);
 
 client.once('ready', () => {
   console.log(`Bot online: ${client.user.tag}`);
