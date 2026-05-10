@@ -1,1 +1,2 @@
 
+require('./events/autoMod')(client);
