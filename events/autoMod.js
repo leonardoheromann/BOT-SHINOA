@@ -41,7 +41,7 @@ const baseWords = [
 ];
 
 /* =========================
-   DETECÇÃO (CORRIGIDA)
+   DETECÇÃO
 ========================= */
 
 function isToxic(text) {
@@ -64,7 +64,7 @@ function isToxic(text) {
   ];
 
   for (const p of patterns) {
-    if (p.test(clean)) score += 3; // 👈 FIX: usa texto limpo
+    if (p.test(clean)) score += 3;
   }
 
   if (/(.)\1{4,}/.test(raw)) score += 1;
@@ -111,18 +111,24 @@ module.exports = (client) => {
     try {
       if (!message.guild) return;
       if (message.author.bot) return;
-      if (!message.content) return;
 
       const logChannel = message.guild.channels.cache.get(LOG_CHANNEL_ID);
 
       if (!isToxic(message.content)) return;
 
-      // 🔥 DELETE FORÇADO (SEM ESCONDER ERRO)
-      try {
-        await message.delete();
-        console.log("🧹 mensagem apagada");
-      } catch (err) {
-        console.log("❌ falha ao apagar:", err.message);
+      /* =========================
+         🔥 DELETE CORRIGIDO
+      ========================= */
+
+      if (message.deletable) {
+        try {
+          await message.delete();
+          console.log("🧹 mensagem apagada");
+        } catch (err) {
+          console.log("❌ erro ao apagar:", err.message);
+        }
+      } else {
+        console.log("⚠️ mensagem não deletável (permissão ou hierarquia)");
       }
 
       const warns = warnUser(message.author.id);
