@@ -5,18 +5,29 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers // 🔥 necessário pro autorole e logs
+    GatewayIntentBits.GuildMembers
   ]
 });
 
-// 🔥 eventos
+// =========================
+// 📁 EVENTOS
+// =========================
 require('./events/guildMemberAdd')(client);
 require('./events/guildMemberUpdate')(client);
 
+// 🧠 AUTO-MOD (NOVO)
+require('./events/autoMod')(client);
+
+// =========================
+// 🤖 BOT ONLINE
+// =========================
 client.once('ready', () => {
   console.log(`Bot online: ${client.user.tag}`);
 });
 
+// =========================
+// 💬 COMANDOS BÁSICOS
+// =========================
 client.on('messageCreate', message => {
   if (message.author.bot) return;
 
@@ -25,4 +36,7 @@ client.on('messageCreate', message => {
   }
 });
 
+// =========================
+// 🔑 LOGIN
+// =========================
 client.login(process.env.TOKEN);
