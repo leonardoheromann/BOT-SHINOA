@@ -1,2 +1,7 @@
+module.exports = (client) => {
+  client.on('messageCreate', (message) => {
+    if (message.author.bot) return;
 
-require('./events/autoMod')(client);
+    console.log("AutoMod ativo:", message.content);
+  });
+};
