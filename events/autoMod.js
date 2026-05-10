@@ -29,7 +29,7 @@ function deobfuscate(text) {
 }
 
 /* =========================
-   PALAVRAS BASE (SEGURAS)
+   BASE WORDS
 ========================= */
 
 const baseWords = [
@@ -41,17 +41,19 @@ const baseWords = [
 ];
 
 /* =========================
-   DETECÇÃO
+   DETECÇÃO (CORRIGIDA)
 ========================= */
 
 function isToxic(text) {
   if (!text) return false;
 
-  let t = normalize(deobfuscate(text));
+  const raw = text;
+  const clean = normalize(deobfuscate(text));
+
   let score = 0;
 
   for (const w of baseWords) {
-    if (t.includes(w)) score += 2;
+    if (clean.includes(w)) score += 2;
   }
 
   const patterns = [
@@ -62,11 +64,11 @@ function isToxic(text) {
   ];
 
   for (const p of patterns) {
-    if (p.test(text)) score += 3;
+    if (p.test(clean)) score += 3; // 👈 FIX: usa texto limpo
   }
 
-  if (/(.)\1{4,}/.test(text)) score += 1;
-  if (/(.{1,2}\s){4,}/.test(text)) score += 2;
+  if (/(.)\1{4,}/.test(raw)) score += 1;
+  if (/(.{1,2}\s){4,}/.test(raw)) score += 2;
 
   return score >= 3;
 }
@@ -113,24 +115,26 @@ module.exports = (client) => {
 
       const logChannel = message.guild.channels.cache.get(LOG_CHANNEL_ID);
 
-      // 🔥 DETECTA
       if (!isToxic(message.content)) return;
 
-      // 🔥 APAGA MENSAGEM (FORÇADO)
-      await message.delete().catch(() => {});
+      // 🔥 DELETE FORÇADO (SEM ESCONDER ERRO)
+      try {
+        await message.delete();
+        console.log("🧹 mensagem apagada");
+      } catch (err) {
+        console.log("❌ falha ao apagar:", err.message);
+      }
 
       const warns = warnUser(message.author.id);
 
       const member = await message.guild.members.fetch(message.author.id).catch(() => null);
 
-      // aviso no chat
       const warnMsg = await message.channel.send(
         `⚠️ ${message.author}, evite esse tipo de mensagem.`
       );
 
       setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
 
-      // LOG
       if (logChannel) {
         logChannel.send(
 `🚨 AUTO-MOD
@@ -142,17 +146,14 @@ module.exports = (client) => {
 
       if (!member) return;
 
-      // 🔇 MUTE
       if (warns === 3) {
         await member.timeout(10 * 60 * 1000, 'AutoMod');
       }
 
-      // 👢 KICK
       if (warns === 4) {
         await member.kick('AutoMod');
       }
 
-      // ⛔ BAN
       if (warns >= 5) {
         await member.ban({ reason: 'AutoMod' });
 
