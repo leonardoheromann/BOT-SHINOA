@@ -3,7 +3,7 @@ const fs = require('fs');
 const LOG_CHANNEL_ID = '1503151222306377758';
 
 /* =========================
-   🧠 NORMALIZAÇÃO
+   NORMALIZAÇÃO
 ========================= */
 
 function normalize(text) {
@@ -29,7 +29,7 @@ function deobfuscate(text) {
 }
 
 /* =========================
-   🔥 BASE WORDS (SÓ RAÍZES)
+   PALAVRAS BASE (SEGURAS)
 ========================= */
 
 const baseWords = [
@@ -37,48 +37,42 @@ const baseWords = [
   'arromb', 'imbecil', 'nojent', 'desgra', 'babaca',
   'inutil', 'fraco', 'trouxa', 'retard', 'escroto',
   'verme', 'vagabund', 'corno', 'cu', 'bosta',
-  'porra', 'puta', 'caralh', 'pau', 'bucet', 'piranh'
+  'porra', 'puta', 'caralh', 'pau', 'bucet'
 ];
 
 /* =========================
-   🚨 FUNÇÃO TOXICIDADE
+   DETECÇÃO
 ========================= */
 
 function isToxic(text) {
-  if (!text || typeof text !== 'string') return false;
+  if (!text) return false;
 
   let t = normalize(deobfuscate(text));
   let score = 0;
 
-  // palavras base
-  for (const word of baseWords) {
-    if (t.includes(word)) score += 2;
+  for (const w of baseWords) {
+    if (t.includes(w)) score += 2;
   }
 
-  // padrões bypass
   const patterns = [
     /(foda|fds)/i,
     /(p[o0]rr)/i,
     /(c4r4lh|caralh)/i,
-    /(vtmnc|vsf)/i,
-    /(bct|bucet)/i
+    /(vtmnc|vsf)/i
   ];
 
   for (const p of patterns) {
     if (p.test(text)) score += 3;
   }
 
-  // spam de letras repetidas
   if (/(.)\1{4,}/.test(text)) score += 1;
-
-  // espaçamento tipo i d i o t a
   if (/(.{1,2}\s){4,}/.test(text)) score += 2;
 
   return score >= 3;
 }
 
 /* =========================
-   ⚠️ WARN SYSTEM SEGURO
+   WARN SYSTEM
 ========================= */
 
 function warnUser(userId) {
@@ -86,12 +80,12 @@ function warnUser(userId) {
 
   let data = {};
 
-  try {
-    if (fs.existsSync(file)) {
+  if (fs.existsSync(file)) {
+    try {
       data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch {
+      data = {};
     }
-  } catch (err) {
-    data = {};
   }
 
   if (!data[userId]) data[userId] = [];
@@ -107,47 +101,43 @@ function warnUser(userId) {
 }
 
 /* =========================
-   🤖 EVENTO PRINCIPAL
+   EVENTO
 ========================= */
 
 module.exports = (client) => {
   client.on('messageCreate', async (message) => {
     try {
-      if (!message || !message.guild) return;
+      if (!message.guild) return;
       if (message.author.bot) return;
       if (!message.content) return;
 
-      if (!isToxic(message.content)) return;
-
       const logChannel = message.guild.channels.cache.get(LOG_CHANNEL_ID);
 
-      // 🔥 apagar mensagem
-      if (message.deletable) {
-        await message.delete().catch(() => {});
-      }
+      // 🔥 DETECTA
+      if (!isToxic(message.content)) return;
+
+      // 🔥 APAGA MENSAGEM (FORÇADO)
+      await message.delete().catch(() => {});
 
       const warns = warnUser(message.author.id);
 
       const member = await message.guild.members.fetch(message.author.id).catch(() => null);
 
-      // ⚠️ aviso no chat
+      // aviso no chat
       const warnMsg = await message.channel.send(
-        `⚠️ ${message.author}, evite esse tipo de mensagem!`
+        `⚠️ ${message.author}, evite esse tipo de mensagem.`
       );
 
-      setTimeout(() => {
-        warnMsg.delete().catch(() => {});
-      }, 5000);
+      setTimeout(() => warnMsg.delete().catch(() => {}), 5000);
 
-      // 📋 LOG
+      // LOG
       if (logChannel) {
-        logChannel.send({
-          content:
-`🚨 AUTO-MOD ATIVO
-👤 Usuário: ${message.author.tag}
-💬 Mensagem: ${message.content}
+        logChannel.send(
+`🚨 AUTO-MOD
+👤 ${message.author.tag}
+💬 ${message.content}
 📊 Warns: ${warns}`
-        });
+        );
       }
 
       if (!member) return;
@@ -155,19 +145,11 @@ module.exports = (client) => {
       // 🔇 MUTE
       if (warns === 3) {
         await member.timeout(10 * 60 * 1000, 'AutoMod');
-
-        if (logChannel) {
-          logChannel.send(`🔇 MUTE: ${message.author.tag}`);
-        }
       }
 
       // 👢 KICK
       if (warns === 4) {
         await member.kick('AutoMod');
-
-        if (logChannel) {
-          logChannel.send(`👢 KICK: ${message.author.tag}`);
-        }
       }
 
       // ⛔ BAN
@@ -175,27 +157,22 @@ module.exports = (client) => {
         await member.ban({ reason: 'AutoMod' });
 
         const file = './warnings.json';
-
         let data = {};
-        try {
-          if (fs.existsSync(file)) {
+
+        if (fs.existsSync(file)) {
+          try {
             data = JSON.parse(fs.readFileSync(file, 'utf8'));
+          } catch {
+            data = {};
           }
-        } catch (err) {
-          data = {};
         }
 
         data[message.author.id] = [];
-
         fs.writeFileSync(file, JSON.stringify(data, null, 2));
-
-        if (logChannel) {
-          logChannel.send(`⛔ BAN: ${message.author.tag}`);
-        }
       }
 
     } catch (err) {
-      console.log('⚠️ AutoMod error:', err);
+      console.log('AutoMod error:', err);
     }
   });
 };
