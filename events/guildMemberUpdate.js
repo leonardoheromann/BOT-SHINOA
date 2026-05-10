@@ -6,15 +6,17 @@ module.exports = (client) => {
       const logChannel = newMember.guild.channels.cache.get('1503147469066993675');
       if (!logChannel) return;
 
-      const addedRoles = newMember.roles.cache.filter(
-        role => !oldMember.roles.cache.has(role.id)
-      );
+      // 🔥 FORÇA DADOS ATUALIZADOS (CORREÇÃO PRINCIPAL)
+      const fetchedOldMember = await newMember.guild.members.fetch(oldMember.id);
+      const fetchedNewMember = await newMember.guild.members.fetch(newMember.id);
 
-      const removedRoles = oldMember.roles.cache.filter(
-        role => !newMember.roles.cache.has(role.id)
-      );
+      const oldRoles = fetchedOldMember.roles.cache;
+      const newRoles = fetchedNewMember.roles.cache;
 
-      // 🔥 pega audit log correto
+      const addedRoles = newRoles.filter(role => !oldRoles.has(role.id));
+      const removedRoles = oldRoles.filter(role => !newRoles.has(role.id));
+
+      // 🔎 AUDIT LOG (quem mexeu no cargo)
       const auditLogs = await newMember.guild.fetchAuditLogs({
         type: AuditLogEvent.MemberRoleUpdate,
         limit: 1
