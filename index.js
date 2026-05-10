@@ -10,6 +10,11 @@ const client = new Client({
 });
 
 // =========================
+// 🔥 AJUSTE DE ESTABILIDADE (ADICIONADO)
+// =========================
+client.setMaxListeners(20);
+
+// =========================
 // 📁 EVENTOS
 // =========================
 require('./events/guildMemberAdd')(client);
@@ -34,6 +39,13 @@ client.on('messageCreate', message => {
   if (message.content === '!ping') {
     message.reply('Pong! 🏓');
   }
+});
+
+// =========================
+// ⚠️ PROTEÇÃO DE ERROS (ADICIONADO)
+// =========================
+process.on('unhandledRejection', error => {
+  console.log('⚠️ Erro ignorado:', error);
 });
 
 // =========================
