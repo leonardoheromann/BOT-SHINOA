@@ -24,6 +24,8 @@ const baseWords = [
 ];
 
 function isToxic(text) {
+  if (!text) return false;
+
   const clean = normalize(text);
 
   let score = 0;
@@ -52,7 +54,13 @@ function isToxic(text) {
 ========================= */
 
 function warnUser(userId) {
-  const data = JSON.parse(fs.readFileSync('./warnings.json', 'utf8'));
+  const file = './warnings.json';
+
+  let data = {};
+
+  if (fs.existsSync(file)) {
+    data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  }
 
   if (!data[userId]) data[userId] = [];
 
@@ -61,7 +69,7 @@ function warnUser(userId) {
     date: new Date().toLocaleString('pt-BR')
   });
 
-  fs.writeFileSync('./warnings.json', JSON.stringify(data, null, 2));
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
 
   return data[userId].length;
 }
@@ -72,63 +80,86 @@ function warnUser(userId) {
 
 module.exports = (client) => {
   client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
+    try {
+      if (!message.guild) return;
+      if (message.author.bot) return;
 
-    const logChannel = message.guild.channels.cache.get(LOG_CHANNEL_ID);
+      if (!isToxic(message.content)) return;
 
-    if (!isToxic(message.content)) return;
+      const logChannel = message.guild.channels.cache.get(LOG_CHANNEL_ID);
 
-    await message.delete().catch(() => {});
+      // 🔥 apagar mensagem
+      if (message.deletable) {
+        await message.delete().catch(() => {});
+      }
 
-    const warns = warnUser(message.author.id);
+      const warns = warnUser(message.author.id);
 
-    const member = await message.guild.members.fetch(message.author.id).catch(() => null);
+      const member = await message.guild.members.fetch(message.author.id).catch(() => null);
 
-    message.channel.send(`⚠️ ${message.author}, evite esse tipo de mensagem!`).then(m => {
-      setTimeout(() => m.delete(), 5000);
-    });
+      // aviso no chat
+      if (message.channel) {
+        const warnMsg = await message.channel.send(
+          `⚠️ ${message.author}, evite esse tipo de mensagem!`
+        );
 
-    /* LOG GLOBAL */
-    if (logChannel) {
-      logChannel.send(
-`🚨 **PUNIÇÃO AUTOMÁTICA**
+        setTimeout(() => {
+          warnMsg.delete().catch(() => {});
+        }, 5000);
+      }
+
+      // 📋 LOG
+      if (logChannel) {
+        logChannel.send(
+`🚨 **AUTO-MOD ATIVO**
 👤 Usuário: ${message.author.tag}
-💬 Mensagem: "${message.content}"
+💬 Mensagem: ${message.content}
 📊 Warns: ${warns}`
-      );
-    }
-
-    if (!member) return;
-
-    // 🔇 MUTE
-    if (warns === 3) {
-      await member.timeout(10 * 60 * 1000, 'Auto-mod');
-
-      if (logChannel) {
-        logChannel.send(`🔇 MUTE: ${message.author.tag}`);
+        );
       }
-    }
 
-    // 👢 KICK
-    if (warns === 4) {
-      await member.kick('Auto-mod');
+      if (!member) return;
 
-      if (logChannel) {
-        logChannel.send(`👢 KICK: ${message.author.tag}`);
+      // 🔇 MUTE
+      if (warns === 3) {
+        await member.timeout(10 * 60 * 1000, 'Auto-mod');
+
+        if (logChannel) {
+          logChannel.send(`🔇 MUTE AUTOMÁTICO: ${message.author.tag}`);
+        }
       }
-    }
 
-    // ⛔ BAN
-    if (warns >= 5) {
-      await member.ban({ reason: 'Auto-mod' });
+      // 👢 KICK
+      if (warns === 4) {
+        await member.kick('Auto-mod');
 
-      const data = JSON.parse(fs.readFileSync('./warnings.json', 'utf8'));
-      data[message.author.id] = [];
-      fs.writeFileSync('./warnings.json', JSON.stringify(data, null, 2));
-
-      if (logChannel) {
-        logChannel.send(`⛔ BAN: ${message.author.tag}`);
+        if (logChannel) {
+          logChannel.send(`👢 KICK AUTOMÁTICO: ${message.author.tag}`);
+        }
       }
+
+      // ⛔ BAN
+      if (warns >= 5) {
+        await member.ban({ reason: 'Auto-mod' });
+
+        const file = './warnings.json';
+        let data = {};
+
+        if (fs.existsSync(file)) {
+          data = JSON.parse(fs.readFileSync(file, 'utf8'));
+        }
+
+        data[message.author.id] = [];
+
+        fs.writeFileSync(file, JSON.stringify(data, null, 2));
+
+        if (logChannel) {
+          logChannel.send(`⛔ BAN AUTOMÁTICO: ${message.author.tag}`);
+        }
+      }
+
+    } catch (err) {
+      console.log('Erro no AutoMod:', err);
     }
   });
 };
