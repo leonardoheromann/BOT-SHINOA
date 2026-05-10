@@ -10,7 +10,7 @@ const client = new Client({
 });
 
 // =========================
-// 🔥 AJUSTE DE ESTABILIDADE (ADICIONADO)
+// 🔥 AJUSTE DE ESTABILIDADE
 // =========================
 client.setMaxListeners(20);
 
@@ -19,8 +19,6 @@ client.setMaxListeners(20);
 // =========================
 require('./events/guildMemberAdd')(client);
 require('./events/guildMemberUpdate')(client);
-
-// 🧠 AUTO-MOD (NOVO)
 require('./events/autoMod')(client);
 
 // =========================
@@ -42,10 +40,14 @@ client.on('messageCreate', message => {
 });
 
 // =========================
-// ⚠️ PROTEÇÃO DE ERROS (ADICIONADO)
+// ⚠️ PROTEÇÃO GLOBAL DE ERROS
 // =========================
 process.on('unhandledRejection', error => {
   console.log('⚠️ Erro ignorado:', error);
+});
+
+process.on('uncaughtException', error => {
+  console.log('⚠️ Erro crítico:', error);
 });
 
 // =========================
